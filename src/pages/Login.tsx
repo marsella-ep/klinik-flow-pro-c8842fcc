@@ -86,17 +86,6 @@ const Login = () => {
               {loading ? "Memproses..." : "Masuk"}
             </Button>
           </form>
-
-          <div className="mt-6 p-4 bg-muted/50 rounded-lg space-y-2">
-            <p className="text-sm font-medium text-foreground">Demo Akun:</p>
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p>• Admin: admin@sentosa.com / admin123</p>
-              <p>• Dokter: doctor@sentosa.com / doctor123</p>
-              <p>• Apoteker: pharmacist@sentosa.com / pharmacist123</p>
-              <p>• Resepsionis: receptionist@sentosa.com / receptionist123</p>
-              <p>• Staff: staff@sentosa.com / staff123</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
