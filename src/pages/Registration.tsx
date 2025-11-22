@@ -8,25 +8,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { UserPlus, Search, Printer } from "lucide-react";
 import { toast } from "sonner";
-
-interface Patient {
-  id: string;
-  queueNumber: number;
-  name: string;
-  age: number;
-  gender: string;
-  complaint: string;
-  status: "waiting" | "in-progress" | "completed";
-}
+import { usePatientFlow, type PatientStatus } from "@/contexts/PatientFlowContext";
 
 const Registration = () => {
-  const [patients, setPatients] = useState<Patient[]>([
-    { id: "1", queueNumber: 1, name: "Ahmad Wijaya", age: 35, gender: "Laki-laki", complaint: "Demam dan batuk", status: "completed" },
-    { id: "2", queueNumber: 2, name: "Siti Rahayu", age: 28, gender: "Perempuan", complaint: "Sakit kepala", status: "in-progress" },
-    { id: "3", queueNumber: 3, name: "Budi Santoso", age: 42, gender: "Laki-laki", complaint: "Cek rutin diabetes", status: "waiting" },
-  ]);
+  const { patients, addPatient } = usePatientFlow();
+  const [showQueueModal, setShowQueueModal] = useState(false);
+  const [lastRegistered, setLastRegistered] = useState<{ name: string; queueNumber: number } | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -39,32 +29,26 @@ const Registration = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    const newPatient: Patient = {
-      id: Date.now().toString(),
-      queueNumber: patients.length + 1,
+    const newPatient = addPatient({
       name: formData.name,
       age: parseInt(formData.age),
       gender: formData.gender,
+      address: formData.address,
       complaint: formData.complaint,
-      status: "waiting",
-    };
+    });
 
-    setPatients([...patients, newPatient]);
-    toast.success(`Pasien ${formData.name} berhasil terdaftar dengan nomor antrian ${newPatient.queueNumber}`);
+    setLastRegistered({ name: newPatient.name, queueNumber: newPatient.queueNumber });
+    setShowQueueModal(true);
+    toast.success(`Pendaftaran Berhasil! Pasien masuk ke daftar pemeriksaan.`);
     
     setFormData({ name: "", age: "", gender: "", address: "", complaint: "" });
   };
 
-  const statusColors = {
-    waiting: "bg-warning/10 text-warning",
-    "in-progress": "bg-primary/10 text-primary",
-    completed: "bg-success/10 text-success",
-  };
-
-  const statusLabels = {
-    waiting: "Menunggu",
-    "in-progress": "Sedang Diperiksa",
-    completed: "Selesai",
+  const statusColors: Record<PatientStatus, string> = {
+    "Menunggu Pemeriksaan": "bg-warning/10 text-warning",
+    "Menunggu Obat di Apotek": "bg-primary/10 text-primary",
+    "Siap Pembayaran": "bg-accent/10 text-accent",
+    "Selesai": "bg-success/10 text-success",
   };
 
   return (
@@ -180,11 +164,14 @@ const Registration = () => {
                       <TableCell>{patient.complaint}</TableCell>
                       <TableCell>
                         <Badge className={statusColors[patient.status]}>
-                          {statusLabels[patient.status]}
+                          {patient.status}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" onClick={() => {
+                          setLastRegistered({ name: patient.name, queueNumber: patient.queueNumber });
+                          setShowQueueModal(true);
+                        }}>
                           <Printer className="w-4 h-4" />
                         </Button>
                       </TableCell>
@@ -195,6 +182,29 @@ const Registration = () => {
             </CardContent>
           </Card>
         </div>
+
+        <Dialog open={showQueueModal} onOpenChange={setShowQueueModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Pendaftaran Berhasil</DialogTitle>
+            </DialogHeader>
+            {lastRegistered && (
+              <div className="space-y-4">
+                <div className="text-center p-6 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-2">Nomor Antrian</p>
+                  <p className="text-6xl font-bold text-primary">{lastRegistered.queueNumber}</p>
+                  <p className="text-lg font-medium mt-4">{lastRegistered.name}</p>
+                </div>
+                <p className="text-sm text-muted-foreground text-center">
+                  Pasien telah masuk ke daftar pemeriksaan dokter
+                </p>
+                <Button onClick={() => setShowQueueModal(false)} className="w-full">
+                  Tutup
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

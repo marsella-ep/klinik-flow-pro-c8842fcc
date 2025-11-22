@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,35 +9,38 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Stethoscope, Send, Clock } from "lucide-react";
 import { toast } from "sonner";
-
-interface Patient {
-  id: string;
-  queueNumber: number;
-  name: string;
-  age: number;
-  complaint: string;
-  time: string;
-}
+import { usePatientFlow } from "@/contexts/PatientFlowContext";
 
 const Examination = () => {
-  const [waitingPatients] = useState<Patient[]>([
-    { id: "1", queueNumber: 3, name: "Budi Santoso", age: 42, complaint: "Cek rutin diabetes", time: "08:45" },
-    { id: "2", queueNumber: 4, name: "Dewi Lestari", age: 30, complaint: "Flu dan batuk", time: "09:00" },
-    { id: "3", queueNumber: 5, name: "Joko Susilo", age: 55, complaint: "Hipertensi", time: "09:15" },
-  ]);
+  const { getPatientsByStatus, updatePatientStatus, patients } = usePatientFlow();
+  const waitingPatients = getPatientsByStatus("Menunggu Pemeriksaan");
 
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const [diagnosis, setDiagnosis] = useState("");
   const [prescription, setPrescription] = useState("");
 
   const handleSaveExamination = () => {
-    if (!selectedPatient) return;
+    if (!selectedPatientId) return;
     
-    toast.success(`Pemeriksaan ${selectedPatient.name} berhasil disimpan dan dikirim ke apotek`);
-    setSelectedPatient(null);
+    const patient = patients.find(p => p.id === selectedPatientId);
+    if (!patient) return;
+
+    updatePatientStatus(selectedPatientId, "Menunggu Obat di Apotek", {
+      diagnosis,
+      prescription,
+    });
+
+    toast.success(`Pemeriksaan ${patient.name} berhasil disimpan dan dikirim ke apotek`);
+    setSelectedPatientId(null);
     setDiagnosis("");
     setPrescription("");
   };
+
+  const completedToday = patients.filter(p => 
+    p.status === "Menunggu Obat di Apotek" || 
+    p.status === "Siap Pembayaran" || 
+    p.status === "Selesai"
+  ).length;
 
   return (
     <Layout>
@@ -65,45 +67,51 @@ const Examination = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {waitingPatients.map((patient) => (
-                    <TableRow key={patient.id}>
-                      <TableCell className="font-medium">{patient.queueNumber}</TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{patient.name}</p>
-                          <p className="text-sm text-muted-foreground">{patient.age} tahun</p>
-                        </div>
+                  {waitingPatients.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        Tidak ada pasien menunggu pemeriksaan
                       </TableCell>
-                      <TableCell>{patient.complaint}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="gap-1">
-                          <Clock className="w-3 h-3" />
-                          {patient.time}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button 
-                              size="sm" 
-                              onClick={() => setSelectedPatient(patient)}
-                            >
-                              Periksa
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-2xl">
-                            <DialogHeader>
-                              <DialogTitle>Pemeriksaan Pasien</DialogTitle>
-                            </DialogHeader>
-                            {selectedPatient && (
+                    </TableRow>
+                  ) : (
+                    waitingPatients.map((patient) => (
+                      <TableRow key={patient.id}>
+                        <TableCell className="font-medium">{patient.queueNumber}</TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{patient.name}</p>
+                            <p className="text-sm text-muted-foreground">{patient.age} tahun</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>{patient.complaint}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="gap-1">
+                            <Clock className="w-3 h-3" />
+                            {patient.registrationTime}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button 
+                                size="sm" 
+                                onClick={() => setSelectedPatientId(patient.id)}
+                              >
+                                Periksa
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                              <DialogHeader>
+                                <DialogTitle>Pemeriksaan Pasien</DialogTitle>
+                              </DialogHeader>
                               <div className="space-y-4">
                                 <div className="p-4 bg-muted/50 rounded-lg">
-                                  <h3 className="font-semibold mb-2">{selectedPatient.name}</h3>
+                                  <h3 className="font-semibold mb-2">{patient.name}</h3>
                                   <p className="text-sm text-muted-foreground">
-                                    Umur: {selectedPatient.age} tahun
+                                    Umur: {patient.age} tahun
                                   </p>
                                   <p className="text-sm text-muted-foreground">
-                                    Keluhan: {selectedPatient.complaint}
+                                    Keluhan: {patient.complaint}
                                   </p>
                                 </div>
                                 
@@ -134,12 +142,12 @@ const Examination = () => {
                                   Simpan & Kirim ke Apotek
                                 </Button>
                               </div>
-                            )}
-                          </DialogContent>
-                        </Dialog>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            </DialogContent>
+                          </Dialog>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -156,11 +164,11 @@ const Examination = () => {
               <div className="space-y-4">
                 <div className="p-4 bg-primary/10 rounded-lg">
                   <p className="text-sm text-muted-foreground">Total Pasien</p>
-                  <p className="text-2xl font-bold text-primary">18</p>
+                  <p className="text-2xl font-bold text-primary">{patients.length}</p>
                 </div>
                 <div className="p-4 bg-success/10 rounded-lg">
                   <p className="text-sm text-muted-foreground">Selesai Diperiksa</p>
-                  <p className="text-2xl font-bold text-success">15</p>
+                  <p className="text-2xl font-bold text-success">{completedToday}</p>
                 </div>
                 <div className="p-4 bg-warning/10 rounded-lg">
                   <p className="text-sm text-muted-foreground">Sedang Menunggu</p>

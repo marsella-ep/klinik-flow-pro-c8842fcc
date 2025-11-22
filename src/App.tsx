@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { PatientFlowProvider } from "@/contexts/PatientFlowContext";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -30,19 +31,21 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/registration" element={<ProtectedRoute><Registration /></ProtectedRoute>} />
-            <Route path="/examination" element={<ProtectedRoute><Examination /></ProtectedRoute>} />
-            <Route path="/pharmacy" element={<ProtectedRoute><Pharmacy /></ProtectedRoute>} />
-            <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
-            <Route path="/patients" element={<ProtectedRoute><PatientData /></ProtectedRoute>} />
-            <Route path="/medicines" element={<ProtectedRoute><MedicineData /></ProtectedRoute>} />
-            <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <PatientFlowProvider>
+            <Routes>
+              <Route path="/" element={<Login />} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/registration" element={<ProtectedRoute><Registration /></ProtectedRoute>} />
+              <Route path="/examination" element={<ProtectedRoute><Examination /></ProtectedRoute>} />
+              <Route path="/pharmacy" element={<ProtectedRoute><Pharmacy /></ProtectedRoute>} />
+              <Route path="/payment" element={<ProtectedRoute><Payment /></ProtectedRoute>} />
+              <Route path="/patients" element={<ProtectedRoute><PatientData /></ProtectedRoute>} />
+              <Route path="/medicines" element={<ProtectedRoute><MedicineData /></ProtectedRoute>} />
+              <Route path="/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </PatientFlowProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
