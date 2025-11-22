@@ -3,43 +3,87 @@ import { StatCard } from "@/components/StatCard";
 import { Users, Pill, DollarSign, Calendar, Activity, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePatientFlow } from "@/contexts/PatientFlowContext";
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const { patients } = usePatientFlow();
+
+  const todayPatients = patients.length;
+  const completedExaminations = patients.filter(p => 
+    p.status === "Menunggu Obat di Apotek" || 
+    p.status === "Siap Pembayaran" || 
+    p.status === "Selesai"
+  ).length;
+  const totalRevenue = patients
+    .filter(p => p.status === "Selesai")
+    .reduce((sum, p) => sum + (p.totalCharge || 0), 0);
+  
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
 
   const stats = [
     {
       title: "Pasien Hari Ini",
-      value: "24",
+      value: todayPatients.toString(),
       icon: Users,
-      trend: { value: "+12% dari kemarin", isPositive: true }
+      trend: { value: `${todayPatients} pasien terdaftar`, isPositive: true }
     },
     {
       title: "Resep Hari Ini",
-      value: "18",
+      value: completedExaminations.toString(),
       icon: Pill,
-      trend: { value: "+8% dari kemarin", isPositive: true }
+      trend: { value: `${completedExaminations} pemeriksaan selesai`, isPositive: true }
     },
     {
       title: "Pendapatan Hari Ini",
-      value: "Rp 4.5 Jt",
+      value: formatCurrency(totalRevenue),
       icon: DollarSign,
-      trend: { value: "+15% dari kemarin", isPositive: true }
+      trend: { value: `Dari ${patients.filter(p => p.status === "Selesai").length} transaksi`, isPositive: true }
     },
     {
-      title: "Stok Obat Menipis",
-      value: "5",
+      title: "Pasien Menunggu",
+      value: patients.filter(p => p.status === "Menunggu Pemeriksaan").length.toString(),
       icon: Activity,
     },
   ];
 
-  const recentActivities = [
-    { time: "10:30", patient: "Ahmad Wijaya", action: "Pemeriksaan selesai", status: "success" },
-    { time: "10:15", patient: "Siti Rahayu", action: "Menunggu obat", status: "warning" },
-    { time: "09:45", patient: "Budi Santoso", action: "Terdaftar", status: "info" },
-    { time: "09:20", patient: "Dewi Lestari", action: "Pembayaran lunas", status: "success" },
-    { time: "09:00", patient: "Joko Susilo", action: "Pemeriksaan berlangsung", status: "warning" },
-  ];
+  // Recent activities from PatientList
+  const recentActivities = patients
+    .slice()
+    .reverse()
+    .slice(0, 5)
+    .map(patient => {
+      let action = "";
+      let status: "success" | "warning" | "info" = "info";
+      
+      if (patient.status === "Selesai") {
+        action = "Pembayaran lunas";
+        status = "success";
+      } else if (patient.status === "Siap Pembayaran") {
+        action = "Menunggu pembayaran";
+        status = "warning";
+      } else if (patient.status === "Menunggu Obat di Apotek") {
+        action = "Menunggu obat";
+        status = "warning";
+      } else {
+        action = "Terdaftar";
+        status = "info";
+      }
+      
+      return {
+        time: patient.registrationTime || "-",
+        patient: patient.name,
+        action,
+        status
+      };
+    });
 
   const statusColors = {
     success: "bg-success/10 text-success",
@@ -73,20 +117,26 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentActivities.map((activity, index) => (
-                  <div key={index} className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-base">
-                    <div className="text-sm font-medium text-muted-foreground w-16">
-                      {activity.time}
+                {recentActivities.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Belum ada aktivitas hari ini
+                  </p>
+                ) : (
+                  recentActivities.map((activity, index) => (
+                    <div key={index} className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-base">
+                      <div className="text-sm font-medium text-muted-foreground w-16">
+                        {activity.time}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium text-sm">{activity.patient}</p>
+                        <p className="text-sm text-muted-foreground">{activity.action}</p>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full ${statusColors[activity.status]}`}>
+                        {activity.status}
+                      </span>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-sm">{activity.patient}</p>
-                      <p className="text-sm text-muted-foreground">{activity.action}</p>
-                    </div>
-                    <span className={`text-xs px-2 py-1 rounded-full ${statusColors[activity.status as keyof typeof statusColors]}`}>
-                      {activity.status}
-                    </span>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -103,28 +153,40 @@ const Dashboard = () => {
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-muted-foreground">Pasien Terdaftar</span>
-                    <span className="font-medium">142 / 200</span>
+                    <span className="font-medium">{todayPatients}</span>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full" style={{ width: "71%" }} />
+                    <div className="h-full bg-primary rounded-full" style={{ width: todayPatients > 0 ? "100%" : "0%" }} />
                   </div>
                 </div>
                 <div>
                   <div className="flex justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Resep Diproses</span>
-                    <span className="font-medium">98 / 150</span>
+                    <span className="text-muted-foreground">Pemeriksaan Selesai</span>
+                    <span className="font-medium">{completedExaminations} / {todayPatients}</span>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-success rounded-full" style={{ width: "65%" }} />
+                    <div 
+                      className="h-full bg-success rounded-full" 
+                      style={{ width: todayPatients > 0 ? `${(completedExaminations / todayPatients) * 100}%` : "0%" }} 
+                    />
                   </div>
                 </div>
                 <div>
                   <div className="flex justify-between text-sm mb-2">
-                    <span className="text-muted-foreground">Pembayaran</span>
-                    <span className="font-medium">135 / 142</span>
+                    <span className="text-muted-foreground">Pembayaran Lunas</span>
+                    <span className="font-medium">
+                      {patients.filter(p => p.status === "Selesai").length} / {completedExaminations}
+                    </span>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div className="h-full bg-warning rounded-full" style={{ width: "95%" }} />
+                    <div 
+                      className="h-full bg-warning rounded-full" 
+                      style={{ 
+                        width: completedExaminations > 0 
+                          ? `${(patients.filter(p => p.status === "Selesai").length / completedExaminations) * 100}%` 
+                          : "0%" 
+                      }} 
+                    />
                   </div>
                 </div>
               </div>

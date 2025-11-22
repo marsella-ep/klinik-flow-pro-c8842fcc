@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 export type PatientStatus = 
   | "Menunggu Pemeriksaan" 
@@ -44,9 +44,28 @@ interface PatientFlowContextType {
 
 const PatientFlowContext = createContext<PatientFlowContextType | undefined>(undefined);
 
+const STORAGE_KEY = 'klinik_sentosa_patient_list';
+
 export const PatientFlowProvider = ({ children }: { children: ReactNode }) => {
-  const [patients, setPatients] = useState<PatientFlow[]>([]);
-  const [queueCounter, setQueueCounter] = useState(1);
+  // Load initial data from localStorage
+  const [patients, setPatients] = useState<PatientFlow[]>(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  });
+  
+  const [queueCounter, setQueueCounter] = useState(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const data = JSON.parse(stored);
+      return data.length > 0 ? Math.max(...data.map((p: PatientFlow) => p.queueNumber)) + 1 : 1;
+    }
+    return 1;
+  });
+
+  // Persist to localStorage whenever patients change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(patients));
+  }, [patients]);
 
   const addPatient = (patientData: Omit<PatientFlow, 'id' | 'queueNumber' | 'status' | 'registrationTime'>): PatientFlow => {
     const newPatient: PatientFlow = {
